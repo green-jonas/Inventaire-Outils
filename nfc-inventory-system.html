@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Werkzeugverwaltung</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .scan-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .scan-section.active {
+            border-color: #667eea;
+            background: #f0f3ff;
+            transform: scale(1.02);
+        }
+
+        .scan-section.completed {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .scan-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .scan-button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .scan-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .action-button {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button {
+            background: #28a745;
+            color: white;
+        }
+
+        .submit-button:hover {
+            background: #218838;
+        }
+
+        .submit-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .reset-button {
+            background: #dc3545;
+            color: white;
+        }
+
+        .reset-button:hover {
+            background: #c82333;
+        }
+
+        .data-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .data-display h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .data-display p {
+            margin: 5px 0;
+            color: #6c757d;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* NFC nicht verfügbar Warnung */
+        .nfc-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 NFC Werkzeugverwaltung</h1>
+        
+        <div id="nfcWarning" class="nfc-warning" style="display: none;">
+            ⚠️ NFC ist in diesem Browser nicht verfügbar. Bitte verwenden Sie Chrome auf Android oder Safari auf iOS.
+        </div>
+
+        <!-- Mitarbeiter scannen -->
+        <div id="employeeSection" class="scan-section active">
+            <h2>1. Mitarbeiter-Tag scannen</h2>
+            <button id="scanEmployee" class="scan-button">
+                <span class="icon">👤</span>
+                Mitarbeiter scannen
+            </button>
+            <div id="employeeStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <!-- Werkzeug scannen -->
+        <div id="toolSection" class="scan-section">
+            <h2>2. Werkzeug-Tag scannen</h2>
+            <button id="scanTool" class="scan-button" disabled>
+                <span class="icon">🔨</span>
+                Werkzeug scannen
+            </button>
+            <div id="toolStatus" class="status" style="display: none;"></div>
+        </div>
+
+        <!-- Daten anzeigen -->
+        <div id="dataDisplay" class="data-display" style="display: none;">
+            <h3>Erfasste Daten:</h3>
+            <p><strong>Mitarbeiter:</strong> <span id="employeeData">-</span></p>
+            <p><strong>Werkzeug:</strong> <span id="toolData">-</span></p>
+            <p><strong>Aktion:</strong> <span id="actionData">-</span></p>
+            <p><strong>Zeitstempel:</strong> <span id="timestampData">-</span></p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button id="submitButton" class="action-button submit-button" disabled>
+                An Google Sheets senden
+            </button>
+            <button id="resetButton" class="action-button reset-button">
+                Zurücksetzen
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Google Apps Script Web App URL - HIER IHRE URL EINFÜGEN!
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
+
+        let employeeData = null;
+        let toolData = null;
+        let currentAction = null;
+
+        // NFC-Verfügbarkeit prüfen
+        if (!('NDEFReader' in window)) {
+            document.getElementById('nfcWarning').style.display = 'block';
+        }
+
+        // Mitarbeiter-Tag scannen
+        document.getElementById('scanEmployee').addEventListener('click', async () => {
+            if (!('NDEFReader' in window)) {
+                showStatus('employeeStatus', 'NFC nicht verfügbar', 'error');
+                return;
+            }
+
+            const button = document.getElementById('scanEmployee');
+            const status = document.getElementById('employeeStatus');
+            
+            button.innerHTML = '<span class="loader"></span> Warte auf Tag...';
+            button.disabled = true;
+            showStatus('employeeStatus', 'Bitte Mitarbeiter-Tag an das Gerät halten...', 'info');
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+
+                ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                    employeeData = {
+                        id: serialNumber,
+                        name: extractDataFromNFC(message) || `Mitarbeiter-${serialNumber}`
+                    };
+                    
+                    showStatus('employeeStatus', `✓ ${employeeData.name} erfasst`, 'success');
+                    document.getElementById('employeeSection').classList.add('completed');
+                    document.getElementById('employeeSection').classList.remove('active');
+                    
+                    // Werkzeug-Scan aktivieren
+                    document.getElementById('toolSection').classList.add('active');
+                    document.getElementById('scanTool').disabled = false;
+                    
+                    button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
+                    updateDataDisplay();
+                });
+
+            } catch (error) {
+                showStatus('employeeStatus', `Fehler: ${error.message}`, 'error');
+                button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
+                button.disabled = false;
+            }
+        });
+
+        // Werkzeug-Tag scannen
+        document.getElementById('scanTool').addEventListener('click', async () => {
+            if (!('NDEFReader' in window)) {
+                showStatus('toolStatus', 'NFC nicht verfügbar', 'error');
+                return;
+            }
+
+            const button = document.getElementById('scanTool');
+            const status = document.getElementById('toolStatus');
+            
+            button.innerHTML = '<span class="loader"></span> Warte auf Tag...';
+            button.disabled = true;
+            showStatus('toolStatus', 'Bitte Werkzeug-Tag an das Gerät halten...', 'info');
+
+            try {
+                const ndef = new NDEFReader();
+                await ndef.scan();
+
+                ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                    toolData = {
+                        id: serialNumber,
+                        name: extractDataFromNFC(message) || `Werkzeug-${serialNumber}`,
+                        status: 'Verfügbar' // Wird später basierend auf der Aktion gesetzt
+                    };
+                    
+                    // Bestimme Aktion (Ausleihen oder Zurückgeben)
+                    // In einer echten Anwendung würden Sie hier den aktuellen Status aus der Datenbank prüfen
+                    currentAction = toolData.status === 'Verfügbar' ? 'Ausleihen' : 'Zurückgeben';
+                    toolData.status = currentAction === 'Ausleihen' ? 'Ausgeliehen' : 'Verfügbar';
+                    
+                    showStatus('toolStatus', `✓ ${toolData.name} erfasst - ${currentAction}`, 'success');
+                    document.getElementById('toolSection').classList.add('completed');
+                    document.getElementById('toolSection').classList.remove('active');
+                    
+                    button.innerHTML = '<span class="icon">🔨</span> Werkzeug scannen';
+                    document.getElementById('submitButton').disabled = false;
+                    updateDataDisplay();
+                });
+
+            } catch (error) {
+                showStatus('toolStatus', `Fehler: ${error.message}`, 'error');
+                button.innerHTML = '<span class="icon">🔨</span> Werkzeug scannen';
+                button.disabled = false;
+            }
+        });
+
+        // Daten an Google Sheets senden
+        document.getElementById('submitButton').addEventListener('click', async () => {
+            const button = document.getElementById('submitButton');
+            button.innerHTML = '<span class="loader"></span> Sende Daten...';
+            button.disabled = true;
+
+            const data = {
+                werkzeugId: toolData.id,
+                werkzeugName: toolData.name,
+                status: toolData.status,
+                mitarbeiterId: employeeData.id,
+                mitarbeiterName: employeeData.name,
+                aktion: currentAction,
+                zeitstempel: new Date().toLocaleString('de-DE')
+            };
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                button.innerHTML = '✓ Erfolgreich gesendet';
+                setTimeout(() => {
+                    resetForm();
+                }, 2000);
+
+            } catch (error) {
+                button.innerHTML = '❌ Fehler beim Senden';
+                console.error('Fehler:', error);
+                setTimeout(() => {
+                    button.innerHTML = 'An Google Sheets senden';
+                    button.disabled = false;
+                }, 2000);
+            }
+        });
+
+        // Zurücksetzen
+        document.getElementById('resetButton').addEventListener('click', resetForm);
+
+        function resetForm() {
+            employeeData = null;
+            toolData = null;
+            currentAction = null;
+            
+            document.querySelectorAll('.scan-section').forEach(section => {
+                section.classList.remove('completed', 'active');
+            });
+            document.getElementById('employeeSection').classList.add('active');
+            
+            document.getElementById('scanEmployee').disabled = false;
+            document.getElementById('scanTool').disabled = true;
+            document.getElementById('submitButton').disabled = true;
+            document.getElementById('submitButton').innerHTML = 'An Google Sheets senden';
+            
+            document.querySelectorAll('.status').forEach(status => {
+                status.style.display = 'none';
+            });
+            
+            document.getElementById('dataDisplay').style.display = 'none';
+        }
+
+        function showStatus(elementId, message, type) {
+            const status = document.getElementById(elementId);
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function updateDataDisplay() {
+            if (employeeData || toolData) {
+                document.getElementById('dataDisplay').style.display = 'block';
+                document.getElementById('employeeData').textContent = employeeData ? employeeData.name : '-';
+                document.getElementById('toolData').textContent = toolData ? toolData.name : '-';
+                document.getElementById('actionData').textContent = currentAction || '-';
+                document.getElementById('timestampData').textContent = new Date().toLocaleString('de-DE');
+            }
+        }
+
+        function extractDataFromNFC(message) {
+            // Extrahiere Text aus NFC-Nachricht
+            for (const record of message.records) {
+                if (record.recordType === "text") {
+                    const textDecoder = new TextDecoder(record.encoding);
+                    return textDecoder.decode(record.data);
+                }
+            }
+            return null;
+        }
+    </script>
+</body>
+</html>
