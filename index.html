@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #14851d 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -253,22 +253,23 @@
         let employeeData = null;
         let toolData = null;
         let currentAction = null;
-        let employeeReader = null;
-        let toolReader = null;
+        let currentAbortController = null;
 
         // NFC-Verfügbarkeit prüfen
         if (!('NDEFReader' in window)) {
             document.getElementById('nfcWarning').style.display = 'block';
         }
 
-        let employeeReader = null;
-        let toolReader = null;
-
         // Mitarbeiter-Tag scannen
         document.getElementById('scanEmployee').addEventListener('click', async () => {
             if (!('NDEFReader' in window)) {
                 showStatus('employeeStatus', 'NFC nicht verfügbar', 'error');
                 return;
+            }
+
+            // Stoppe vorherigen Scan falls aktiv
+            if (currentAbortController) {
+                currentAbortController.abort();
             }
 
             const button = document.getElementById('scanEmployee');
@@ -279,10 +280,12 @@
             showStatus('employeeStatus', 'Bitte Mitarbeiter-Tag an das Gerät halten...', 'info');
 
             try {
-                employeeReader = new NDEFReader();
-                await employeeReader.scan();
+                const ndef = new NDEFReader();
+                currentAbortController = new AbortController();
+                
+                await ndef.scan({ signal: currentAbortController.signal });
 
-                employeeReader.addEventListener("reading", ({ message, serialNumber }) => {
+                ndef.addEventListener("reading", ({ message, serialNumber }) => {
                     employeeData = {
                         id: serialNumber,
                         name: extractDataFromNFC(message) || `Mitarbeiter-${serialNumber}`
@@ -300,15 +303,17 @@
                     button.disabled = false;
                     updateDataDisplay();
                     
-                    // WICHTIG: Stoppe den Employee Scanner
-                    if (employeeReader) {
-                        employeeReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
-                        employeeReader = null;
+                    // Stoppe den aktuellen Scan
+                    if (currentAbortController) {
+                        currentAbortController.abort();
+                        currentAbortController = null;
                     }
                 });
 
             } catch (error) {
-                showStatus('employeeStatus', `Fehler: ${error.message}`, 'error');
+                if (error.name !== 'AbortError') {
+                    showStatus('employeeStatus', `Fehler: ${error.message}`, 'error');
+                }
                 button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
                 button.disabled = false;
             }
@@ -321,6 +326,11 @@
                 return;
             }
 
+            // Stoppe vorherigen Scan falls aktiv
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+
             const button = document.getElementById('scanTool');
             const status = document.getElementById('toolStatus');
             
@@ -329,10 +339,12 @@
             showStatus('toolStatus', 'Bitte Werkzeug-Tag an das Gerät halten...', 'info');
 
             try {
-                toolReader = new NDEFReader();
-                await toolReader.scan();
+                const ndef = new NDEFReader();
+                currentAbortController = new AbortController();
+                
+                await ndef.scan({ signal: currentAbortController.signal });
 
-                toolReader.addEventListener("reading", ({ message, serialNumber }) => {
+                ndef.addEventListener("reading", ({ message, serialNumber }) => {
                     toolData = {
                         id: serialNumber,
                         name: extractDataFromNFC(message) || `Werkzeug-${serialNumber}`,
@@ -353,15 +365,17 @@
                     document.getElementById('submitButton').disabled = false;
                     updateDataDisplay();
                     
-                    // WICHTIG: Stoppe den Tool Scanner
-                    if (toolReader) {
-                        toolReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
-                        toolReader = null;
+                    // Stoppe den aktuellen Scan
+                    if (currentAbortController) {
+                        currentAbortController.abort();
+                        currentAbortController = null;
                     }
                 });
 
             } catch (error) {
-                showStatus('toolStatus', `Fehler: ${error.message}`, 'error');
+                if (error.name !== 'AbortError') {
+                    showStatus('toolStatus', `Fehler: ${error.message}`, 'error');
+                }
                 button.innerHTML = '<span class="icon">🔨</span> Werkzeug scannen';
                 button.disabled = false;
             }
@@ -383,28 +397,62 @@
                 zeitstempel: new Date().toLocaleString('de-DE')
             };
 
+            console.log('Sende Daten:', data);
+            console.log('An URL:', GOOGLE_SCRIPT_URL);
+
             try {
+                // Versuche zuerst mit fetch
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(data)
                 });
 
+                // Bei no-cors können wir den Response nicht lesen, 
+                // aber wir können prüfen ob der Request durchging
+                console.log('Request gesendet');
+                
                 button.innerHTML = '✓ Erfolgreich gesendet';
                 setTimeout(() => {
                     resetForm();
                 }, 2000);
 
             } catch (error) {
-                button.innerHTML = '❌ Fehler beim Senden';
-                console.error('Fehler:', error);
-                setTimeout(() => {
-                    button.innerHTML = 'An Google Sheets senden';
-                    button.disabled = false;
-                }, 2000);
+                console.error('Fehler beim Senden:', error);
+                
+                // Fallback: Versuche es mit einem versteckten Form-Submit
+                try {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = GOOGLE_SCRIPT_URL;
+                    form.target = '_blank';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'data';
+                    input.value = JSON.stringify(data);
+                    
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                    
+                    button.innerHTML = '✓ Erfolgreich gesendet (neues Fenster)';
+                    setTimeout(() => {
+                        resetForm();
+                    }, 2000);
+                    
+                } catch (fallbackError) {
+                    button.innerHTML = '❌ Fehler beim Senden';
+                    console.error('Fallback Fehler:', fallbackError);
+                    alert('Fehler: ' + fallbackError.message + '\n\nBitte prüfen Sie die Browser-Konsole für Details.');
+                    setTimeout(() => {
+                        button.innerHTML = 'An Google Sheets senden';
+                        button.disabled = false;
+                    }, 2000);
+                }
             }
         });
 
