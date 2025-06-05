@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #13871b 0%, #065e0c 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -401,17 +401,16 @@
             console.log('An URL:', GOOGLE_SCRIPT_URL);
 
             try {
-                // Versuche zuerst mit fetch
+                // Methode 1: FormData (funktioniert besser mit no-cors)
+                const formData = new FormData();
+                formData.append('data', JSON.stringify(data));
+                
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
+                    mode: 'no-cors',
+                    body: formData
                 });
 
-                // Bei no-cors können wir den Response nicht lesen, 
-                // aber wir können prüfen ob der Request durchging
                 console.log('Request gesendet');
                 
                 button.innerHTML = '✓ Erfolgreich gesendet';
@@ -422,24 +421,18 @@
             } catch (error) {
                 console.error('Fehler beim Senden:', error);
                 
-                // Fallback: Versuche es mit einem versteckten Form-Submit
+                // Fallback Methode 2: URL mit Parametern
                 try {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = GOOGLE_SCRIPT_URL;
-                    form.target = '_blank';
+                    const params = new URLSearchParams({
+                        data: JSON.stringify(data)
+                    });
                     
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'data';
-                    input.value = JSON.stringify(data);
+                    const fallbackResponse = await fetch(GOOGLE_SCRIPT_URL + '?' + params.toString(), {
+                        method: 'GET',
+                        mode: 'no-cors'
+                    });
                     
-                    form.appendChild(input);
-                    document.body.appendChild(form);
-                    form.submit();
-                    document.body.removeChild(form);
-                    
-                    button.innerHTML = '✓ Erfolgreich gesendet (neues Fenster)';
+                    button.innerHTML = '✓ Erfolgreich gesendet (Fallback)';
                     setTimeout(() => {
                         resetForm();
                     }, 2000);
@@ -447,7 +440,7 @@
                 } catch (fallbackError) {
                     button.innerHTML = '❌ Fehler beim Senden';
                     console.error('Fallback Fehler:', fallbackError);
-                    alert('Fehler: ' + fallbackError.message + '\n\nBitte prüfen Sie die Browser-Konsole für Details.');
+                    alert('Fehler: ' + fallbackError.message);
                     setTimeout(() => {
                         button.innerHTML = 'An Google Sheets senden';
                         button.disabled = false;
@@ -464,14 +457,10 @@
             toolData = null;
             currentAction = null;
             
-            // Stoppe alle aktiven NFC-Scanner
-            if (employeeReader) {
-                employeeReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
-                employeeReader = null;
-            }
-            if (toolReader) {
-                toolReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
-                toolReader = null;
+            // Stoppe aktiven NFC-Scan
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
             }
             
             document.querySelectorAll('.scan-section').forEach(section => {
