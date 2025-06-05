@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #14851d 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -248,15 +248,21 @@
 
     <script>
         // Google Apps Script Web App URL - HIER IHRE URL EINFÜGEN!
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/Kfycbwy8CMik_yWZl4aprIrL4M_wl-2aEivzAjwohSvsAOJNl4KPq0OZ8HSPa7kfJB_xQvq/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwy8CMik_yWZl4aprIrL4M_wl-2aEivzAjwohSvsAOJNl4KPq0OZ8HSPa7kfJB_xQvq/exec';
+
         let employeeData = null;
         let toolData = null;
         let currentAction = null;
+        let employeeReader = null;
+        let toolReader = null;
 
         // NFC-Verfügbarkeit prüfen
         if (!('NDEFReader' in window)) {
             document.getElementById('nfcWarning').style.display = 'block';
         }
+
+        let employeeReader = null;
+        let toolReader = null;
 
         // Mitarbeiter-Tag scannen
         document.getElementById('scanEmployee').addEventListener('click', async () => {
@@ -273,10 +279,10 @@
             showStatus('employeeStatus', 'Bitte Mitarbeiter-Tag an das Gerät halten...', 'info');
 
             try {
-                const ndef = new NDEFReader();
-                await ndef.scan();
+                employeeReader = new NDEFReader();
+                await employeeReader.scan();
 
-                ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                employeeReader.addEventListener("reading", ({ message, serialNumber }) => {
                     employeeData = {
                         id: serialNumber,
                         name: extractDataFromNFC(message) || `Mitarbeiter-${serialNumber}`
@@ -291,7 +297,14 @@
                     document.getElementById('scanTool').disabled = false;
                     
                     button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
+                    button.disabled = false;
                     updateDataDisplay();
+                    
+                    // WICHTIG: Stoppe den Employee Scanner
+                    if (employeeReader) {
+                        employeeReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
+                        employeeReader = null;
+                    }
                 });
 
             } catch (error) {
@@ -316,10 +329,10 @@
             showStatus('toolStatus', 'Bitte Werkzeug-Tag an das Gerät halten...', 'info');
 
             try {
-                const ndef = new NDEFReader();
-                await ndef.scan();
+                toolReader = new NDEFReader();
+                await toolReader.scan();
 
-                ndef.addEventListener("reading", ({ message, serialNumber }) => {
+                toolReader.addEventListener("reading", ({ message, serialNumber }) => {
                     toolData = {
                         id: serialNumber,
                         name: extractDataFromNFC(message) || `Werkzeug-${serialNumber}`,
@@ -336,8 +349,15 @@
                     document.getElementById('toolSection').classList.remove('active');
                     
                     button.innerHTML = '<span class="icon">🔨</span> Werkzeug scannen';
+                    button.disabled = false;
                     document.getElementById('submitButton').disabled = false;
                     updateDataDisplay();
+                    
+                    // WICHTIG: Stoppe den Tool Scanner
+                    if (toolReader) {
+                        toolReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
+                        toolReader = null;
+                    }
                 });
 
             } catch (error) {
@@ -395,6 +415,16 @@
             employeeData = null;
             toolData = null;
             currentAction = null;
+            
+            // Stoppe alle aktiven NFC-Scanner
+            if (employeeReader) {
+                employeeReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
+                employeeReader = null;
+            }
+            if (toolReader) {
+                toolReader.scan({ signal: (new AbortController()).signal }).catch(() => {});
+                toolReader = null;
+            }
             
             document.querySelectorAll('.scan-section').forEach(section => {
                 section.classList.remove('completed', 'active');
