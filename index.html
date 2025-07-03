@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #13871b 0%, #065e0c 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -187,14 +187,20 @@
             vertical-align: middle;
         }
 
-        /* NFC nicht verfügbar Warnung */
-        .nfc-warning {
-            background: #fff3cd;
-            color: #856404;
+        /* Info-Box */
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
             padding: 15px;
-            border-radius: 10px;
             margin-bottom: 20px;
-            text-align: center;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #1565C0;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -206,12 +212,18 @@
             ⚠️ NFC ist in diesem Browser nicht verfügbar. Bitte verwenden Sie Chrome auf Android oder Safari auf iOS.
         </div>
 
+        <div class="info-box">
+            <strong>📌 So funktioniert's:</strong>
+            • <strong>Ausleihen:</strong> Mitarbeiter-Tag → Werkzeug-Tag<br>
+            • <strong>Zurückgeben:</strong> Lager-Tag → Werkzeug-Tag
+        </div>
+
         <!-- Mitarbeiter scannen -->
         <div id="employeeSection" class="scan-section active">
-            <h2>1. Mitarbeiter-Tag scannen</h2>
+            <h2>1. Mitarbeiter oder Lager scannen</h2>
             <button id="scanEmployee" class="scan-button">
                 <span class="icon">👤</span>
-                Mitarbeiter scannen
+                Person/Lager scannen
             </button>
             <div id="employeeStatus" class="status" style="display: none;"></div>
         </div>
@@ -248,7 +260,7 @@
 
     <script>
         // Google Apps Script Web App URL - HIER IHRE URL EINFÜGEN!
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwy8CMik_yWZl4aprIrL4M_wl-2aEivzAjwohSvsAOJNl4KPq0OZ8HSPa7kfJB_xQvq/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
 
         let employeeData = null;
         let toolData = null;
@@ -291,7 +303,17 @@
                         name: extractDataFromNFC(message) || `Mitarbeiter-${serialNumber}`
                     };
                     
-                    showStatus('employeeStatus', `✓ ${employeeData.name} erfasst`, 'success');
+                    // Prüfe ob es der Lager-Tag ist
+                    const isLagerTag = employeeData.name.toLowerCase().includes('lager') || 
+                                      employeeData.id === 'LAGER-ID'; // Anpassen Sie die ID
+                    
+                    if (isLagerTag) {
+                        employeeData.name = '🏭 Lager';
+                        showStatus('employeeStatus', `✓ Lager-Tag erkannt - Rückgabe-Modus`, 'success');
+                    } else {
+                        showStatus('employeeStatus', `✓ ${employeeData.name} erfasst`, 'success');
+                    }
+                    
                     document.getElementById('employeeSection').classList.add('completed');
                     document.getElementById('employeeSection').classList.remove('active');
                     
@@ -299,7 +321,7 @@
                     document.getElementById('toolSection').classList.add('active');
                     document.getElementById('scanTool').disabled = false;
                     
-                    button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
+                    button.innerHTML = '<span class="icon">👤</span> Person/Lager scannen';
                     button.disabled = false;
                     updateDataDisplay();
                     
@@ -314,7 +336,7 @@
                 if (error.name !== 'AbortError') {
                     showStatus('employeeStatus', `Fehler: ${error.message}`, 'error');
                 }
-                button.innerHTML = '<span class="icon">👤</span> Mitarbeiter scannen';
+                button.innerHTML = '<span class="icon">👤</span> Person/Lager scannen';
                 button.disabled = false;
             }
         });
@@ -347,16 +369,22 @@
                 ndef.addEventListener("reading", ({ message, serialNumber }) => {
                     toolData = {
                         id: serialNumber,
-                        name: extractDataFromNFC(message) || `Werkzeug-${serialNumber}`,
-                        status: 'Verfügbar' // Wird später basierend auf der Aktion gesetzt
+                        name: extractDataFromNFC(message) || `Werkzeug-${serialNumber}`
                     };
                     
-                    // Bestimme Aktion (Ausleihen oder Zurückgeben)
-                    // In einer echten Anwendung würden Sie hier den aktuellen Status aus der Datenbank prüfen
-                    currentAction = toolData.status === 'Verfügbar' ? 'Ausleihen' : 'Zurückgeben';
-                    toolData.status = currentAction === 'Ausleihen' ? 'Ausgeliehen' : 'Verfügbar';
+                    // Bestimme Aktion basierend auf dem Mitarbeiter-Tag
+                    const isLagerReturn = employeeData.name === '🏭 Lager';
                     
-                    showStatus('toolStatus', `✓ ${toolData.name} erfasst - ${currentAction}`, 'success');
+                    if (isLagerReturn) {
+                        currentAction = 'Zurückgeben';
+                        toolData.status = 'Verfügbar';
+                        showStatus('toolStatus', `✓ ${toolData.name} wird zurückgegeben`, 'success');
+                    } else {
+                        currentAction = 'Ausleihen';
+                        toolData.status = 'Ausgeliehen';
+                        showStatus('toolStatus', `✓ ${toolData.name} wird ausgeliehen`, 'success');
+                    }
+                    
                     document.getElementById('toolSection').classList.add('completed');
                     document.getElementById('toolSection').classList.remove('active');
                     
@@ -490,7 +518,14 @@
         function updateDataDisplay() {
             if (employeeData || toolData) {
                 document.getElementById('dataDisplay').style.display = 'block';
-                document.getElementById('employeeData').textContent = employeeData ? employeeData.name : '-';
+                
+                // Bei Lager-Rückgabe angepasste Anzeige
+                if (employeeData && employeeData.name === '🏭 Lager') {
+                    document.getElementById('employeeData').textContent = 'Rückgabe ans Lager';
+                } else {
+                    document.getElementById('employeeData').textContent = employeeData ? employeeData.name : '-';
+                }
+                
                 document.getElementById('toolData').textContent = toolData ? toolData.name : '-';
                 document.getElementById('actionData').textContent = currentAction || '-';
                 document.getElementById('timestampData').textContent = new Date().toLocaleString('de-DE');
