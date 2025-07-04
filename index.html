@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFC Werkzeugverwaltung</title>
+    <title>Isogreen - Gestion d'inventaire NFC</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #ffa500 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -31,11 +31,21 @@
             backdrop-filter: blur(10px);
         }
 
+        .company-name {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 300;
+            color: #2E7D32;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
         h1 {
             color: #333;
             margin-bottom: 30px;
             text-align: center;
-            font-size: 28px;
+            font-size: 26px;
         }
 
         .scan-section {
@@ -48,8 +58,8 @@
         }
 
         .scan-section.active {
-            border-color: #667eea;
-            background: #f0f3ff;
+            border-color: #4CAF50;
+            background: #f1f8f4;
             transform: scale(1.02);
         }
 
@@ -64,7 +74,7 @@
             font-size: 18px;
             border: none;
             border-radius: 10px;
-            background: #667eea;
+            background: #4CAF50;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -75,7 +85,7 @@
         }
 
         .scan-button:hover {
-            background: #5a67d8;
+            background: #45a049;
             transform: translateY(-2px);
         }
 
@@ -170,7 +180,7 @@
             width: 20px;
             height: 20px;
             border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
+            border-top: 3px solid #4CAF50;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -187,7 +197,7 @@
             vertical-align: middle;
         }
 
-        /* NFC nicht verfügbar Warnung */
+        /* NFC non disponible avertissement */
         .nfc-warning {
             background: #fff3cd;
             color: #856404;
@@ -199,13 +209,13 @@
 
         /* Info-Box */
         .info-box {
-            background: #e3f2fd;
-            border-left: 4px solid #2196F3;
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
             padding: 15px;
             margin-bottom: 20px;
             border-radius: 5px;
             font-size: 14px;
-            color: #1565C0;
+            color: #2E7D32;
         }
 
         .info-box strong {
@@ -213,7 +223,7 @@
             margin-bottom: 5px;
         }
 
-        /* Werkzeug-Liste */
+        /* Liste des outils */
         .tool-list {
             margin-top: 15px;
             max-height: 200px;
@@ -253,69 +263,70 @@
             text-align: center;
             font-size: 18px;
             margin: 10px 0;
-            color: #667eea;
+            color: #4CAF50;
             font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔧 NFC Werkzeugverwaltung</h1>
+        <div class="company-name">Isogreen</div>
+        <h1>🔧 Gestion d'inventaire NFC</h1>
         
         <div id="nfcWarning" class="nfc-warning" style="display: none;">
-            ⚠️ NFC ist in diesem Browser nicht verfügbar. Bitte verwenden Sie Chrome auf Android oder Safari auf iOS.
+            ⚠️ NFC n'est pas disponible dans ce navigateur. Veuillez utiliser Chrome sur Android ou Safari sur iOS.
         </div>
 
         <div class="info-box">
-            <strong>📌 So funktioniert's:</strong>
-            • <strong>Ausleihen:</strong> ISO-Mitarbeiter → Mehrere Werkzeuge scannen<br>
-            • <strong>Zurückgeben:</strong> LGR-Lager → Mehrere Werkzeuge scannen<br>
-            • <strong>Kategorien:</strong> ARR- (Bewässerung), BAT- (Akkus), MACH- (Maschinen), DIV- (Diverses)
+            <strong>📌 Mode d'emploi :</strong>
+            • <strong>Emprunter :</strong> ISO-Employé → Scanner plusieurs outils<br>
+            • <strong>Retourner :</strong> DEP-Dépôt → Scanner plusieurs outils<br>
+            • <strong>Catégories :</strong> ARR- (Arrosage), BAT- (Batteries), MACH- (Machines), DIV- (Divers)
         </div>
 
-        <!-- Mitarbeiter/Lager scannen -->
+        <!-- Scanner personne/dépôt -->
         <div id="employeeSection" class="scan-section active">
-            <h2>1. Person/Lager scannen</h2>
+            <h2>1. Scanner personne/dépôt</h2>
             <button id="scanEmployee" class="scan-button">
                 <span class="icon">👤</span>
-                ISO-/LGR-Tag scannen
+                Scanner tag ISO-/DEP-
             </button>
             <div id="employeeStatus" class="status" style="display: none;"></div>
         </div>
 
-        <!-- Werkzeuge scannen -->
+        <!-- Scanner outils -->
         <div id="toolSection" class="scan-section">
-            <h2>2. Werkzeuge scannen</h2>
+            <h2>2. Scanner les outils</h2>
             <button id="scanTool" class="scan-button" disabled>
                 <span class="icon">🔨</span>
-                Werkzeug hinzufügen
+                Ajouter un outil
             </button>
             <div id="toolStatus" class="status" style="display: none;"></div>
-            <div class="counter" id="toolCounter" style="display: none;">0 Werkzeuge gescannt</div>
+            <div class="counter" id="toolCounter" style="display: none;">0 outils scannés</div>
             <div class="tool-list" id="toolList"></div>
         </div>
 
-        <!-- Daten anzeigen -->
+        <!-- Afficher les données -->
         <div id="dataDisplay" class="data-display" style="display: none;">
-            <h3>Aktuelle Session:</h3>
-            <p><strong>Person:</strong> <span id="employeeData">-</span></p>
-            <p><strong>Aktion:</strong> <span id="actionData">-</span></p>
-            <p><strong>Werkzeuge:</strong> <span id="toolCount">0</span></p>
+            <h3>Session actuelle :</h3>
+            <p><strong>Personne :</strong> <span id="employeeData">-</span></p>
+            <p><strong>Action :</strong> <span id="actionData">-</span></p>
+            <p><strong>Outils :</strong> <span id="toolCount">0</span></p>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Boutons d'action -->
         <div class="action-buttons">
             <button id="finishButton" class="action-button submit-button" disabled>
-                Session beenden
+                Terminer la session
             </button>
             <button id="resetButton" class="action-button reset-button">
-                Neu starten
+                Recommencer
             </button>
         </div>
     </div>
 
     <script>
-        // Google Apps Script Web App URL - HIER IHRE URL EINFÜGEN!
+        // Google Apps Script Web App URL - INSÉREZ VOTRE URL ICI !
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwy8CMik_yWZl4aprIrL4M_wl-2aEivzAjwohSvsAOJNl4KPq0OZ8HSPa7kfJB_xQvq/exec';
 
         let employeeData = null;
@@ -323,23 +334,24 @@
         let currentAction = null;
         let currentAbortController = null;
         let isScanning = false;
+        let scanTimeout = null;
 
-        // Präfix-Definitionen
+        // Définitions des préfixes
         const PREFIXES = {
             employee: ['ISO-'],
-            storage: ['LGR-'],
+            storage: ['DEP-'],
             tools: ['ARR-', 'BAT-', 'MACH-', 'DIV-']
         };
 
-        // NFC-Verfügbarkeit prüfen
+        // Vérifier la disponibilité NFC
         if (!('NDEFReader' in window)) {
             document.getElementById('nfcWarning').style.display = 'block';
         }
 
-        // Mitarbeiter/Lager-Tag scannen
+        // Scanner tag employé/dépôt
         document.getElementById('scanEmployee').addEventListener('click', async () => {
             if (!('NDEFReader' in window)) {
-                showStatus('employeeStatus', 'NFC nicht verfügbar', 'error');
+                showStatus('employeeStatus', 'NFC non disponible', 'error');
                 return;
             }
 
@@ -348,9 +360,9 @@
             }
 
             const button = document.getElementById('scanEmployee');
-            button.innerHTML = '<span class="loader"></span> Warte auf Tag...';
+            button.innerHTML = '<span class="loader"></span> En attente du tag...';
             button.disabled = true;
-            showStatus('employeeStatus', 'Bitte ISO- oder LGR-Tag an das Gerät halten...', 'info');
+            showStatus('employeeStatus', 'Veuillez scanner un tag ISO- ou DEP-...', 'info');
 
             try {
                 const ndef = new NDEFReader();
@@ -361,10 +373,10 @@
                 ndef.addEventListener("reading", ({ message, serialNumber }) => {
                     const tagData = extractDataFromNFC(message) || serialNumber;
                     
-                    // Prüfe Präfix
+                    // Vérifier le préfixe
                     if (!isValidEmployeeOrStorageTag(tagData)) {
-                        showStatus('employeeStatus', '❌ Ungültiger Tag! Bitte ISO- oder LGR-Tag scannen', 'error');
-                        button.innerHTML = '<span class="icon">👤</span> ISO-/LGR-Tag scannen';
+                        showStatus('employeeStatus', '❌ Tag invalide ! Veuillez scanner un tag ISO- ou DEP-', 'error');
+                        button.innerHTML = '<span class="icon">👤</span> Scanner tag ISO-/DEP-';
                         button.disabled = false;
                         return;
                     }
@@ -374,15 +386,15 @@
                         name: tagData
                     };
                     
-                    // Prüfe ob es der Lager-Tag ist
-                    const isLagerTag = tagData.toUpperCase().startsWith('LGR-');
+                    // Vérifier si c'est un tag dépôt
+                    const isDepotTag = tagData.toUpperCase().startsWith('DEP-');
                     
-                    if (isLagerTag) {
-                        currentAction = 'Zurückgeben';
-                        showStatus('employeeStatus', `✓ Lager-Tag erkannt - Rückgabe-Modus`, 'success');
+                    if (isDepotTag) {
+                        currentAction = 'Retourner';
+                        showStatus('employeeStatus', `✓ Tag dépôt reconnu - Mode retour`, 'success');
                     } else {
-                        currentAction = 'Ausleihen';
-                        showStatus('employeeStatus', `✓ ${employeeData.name} erfasst - Ausleihe-Modus`, 'success');
+                        currentAction = 'Emprunter';
+                        showStatus('employeeStatus', `✓ ${employeeData.name} enregistré - Mode emprunt`, 'success');
                     }
                     
                     document.getElementById('employeeSection').classList.add('completed');
@@ -390,7 +402,7 @@
                     document.getElementById('toolSection').classList.add('active');
                     document.getElementById('scanTool').disabled = false;
                     
-                    button.innerHTML = '<span class="icon">👤</span> ISO-/LGR-Tag scannen';
+                    button.innerHTML = '<span class="icon">👤</span> Scanner tag ISO-/DEP-';
                     button.disabled = false;
                     updateDataDisplay();
                     
@@ -402,17 +414,17 @@
 
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    showStatus('employeeStatus', `Fehler: ${error.message}`, 'error');
+                    showStatus('employeeStatus', `Erreur : ${error.message}`, 'error');
                 }
-                button.innerHTML = '<span class="icon">👤</span> ISO-/LGR-Tag scannen';
+                button.innerHTML = '<span class="icon">👤</span> Scanner tag ISO-/DEP-';
                 button.disabled = false;
             }
         });
 
-        // Werkzeug-Tag scannen
+        // Scanner tag outil
         document.getElementById('scanTool').addEventListener('click', async () => {
             if (!('NDEFReader' in window)) {
-                showStatus('toolStatus', 'NFC nicht verfügbar', 'error');
+                showStatus('toolStatus', 'NFC non disponible', 'error');
                 return;
             }
 
@@ -424,8 +436,8 @@
             }
 
             const button = document.getElementById('scanTool');
-            button.innerHTML = '<span class="loader"></span> Warte auf Werkzeug...';
-            showStatus('toolStatus', 'Bitte Werkzeug-Tag scannen (ARR-, BAT-, MACH-, DIV-)...', 'info');
+            button.innerHTML = '<span class="loader"></span> En attente d\'outil...';
+            showStatus('toolStatus', 'Veuillez scanner un tag outil (ARR-, BAT-, MACH-, DIV-)...', 'info');
 
             try {
                 const ndef = new NDEFReader();
@@ -436,78 +448,81 @@
                 ndef.addEventListener("reading", async ({ message, serialNumber }) => {
                     const tagData = extractDataFromNFC(message) || serialNumber;
                     
-                    // Prüfe Präfix
+                    // Vérifier le préfixe
                     if (!isValidToolTag(tagData)) {
-                        showStatus('toolStatus', '❌ Ungültiger Tag! Bitte Werkzeug-Tag scannen', 'error');
+                        showStatus('toolStatus', '❌ Tag invalide ! Veuillez scanner un tag outil', 'error');
                         return;
                     }
                     
                     const toolData = {
                         id: serialNumber,
                         name: tagData,
-                        status: currentAction === 'Ausleihen' ? 'Ausgeliehen' : 'Verfügbar',
-                        timestamp: new Date().toLocaleString('de-DE')
+                        status: currentAction === 'Emprunter' ? 'Emprunté' : 'Disponible',
+                        timestamp: new Date().toLocaleString('fr-FR')
                     };
                     
-                    // Prüfe ob Werkzeug bereits gescannt wurde
+                    // Vérifier si l'outil a déjà été scanné
                     if (scannedTools.some(tool => tool.id === toolData.id)) {
-                        showStatus('toolStatus', '⚠️ Werkzeug bereits gescannt!', 'error');
+                        showStatus('toolStatus', '⚠️ Outil déjà scanné !', 'error');
                         return;
                     }
                     
-                    // Füge zur Liste hinzu
+                    // Ajouter à la liste
                     scannedTools.push({...toolData, sent: false});
                     updateToolList();
                     
-                    showStatus('toolStatus', `✓ ${toolData.name} hinzugefügt`, 'success');
+                    showStatus('toolStatus', `✓ ${toolData.name} ajouté`, 'success');
                     
-                    // Sende direkt an Google Sheets
+                    // Envoyer à Google Sheets
                     await sendToolToSheets(toolData);
                     
-                    button.innerHTML = '<span class="icon">🔨</span> Weiteres Werkzeug scannen';
+                    button.innerHTML = '<span class="icon">🔨</span> Scanner autre outil';
                     document.getElementById('finishButton').disabled = false;
                     
-                    if (currentAbortController) {
-                        currentAbortController.abort();
-                        currentAbortController = null;
-                    }
-                    
-                    isScanning = false;
+                    // Garder le scan actif plus longtemps (3 secondes)
+                    if (scanTimeout) clearTimeout(scanTimeout);
+                    scanTimeout = setTimeout(() => {
+                        if (currentAbortController) {
+                            currentAbortController.abort();
+                            currentAbortController = null;
+                        }
+                        isScanning = false;
+                    }, 3000);
                 });
 
             } catch (error) {
                 if (error.name !== 'AbortError') {
-                    showStatus('toolStatus', `Fehler: ${error.message}`, 'error');
+                    showStatus('toolStatus', `Erreur : ${error.message}`, 'error');
                 }
-                button.innerHTML = '<span class="icon">🔨</span> Werkzeug hinzufügen';
+                button.innerHTML = '<span class="icon">🔨</span> Ajouter un outil';
                 isScanning = false;
             }
         });
 
-        // Session beenden
+        // Terminer la session
         document.getElementById('finishButton').addEventListener('click', () => {
             const unsent = scannedTools.filter(tool => !tool.sent).length;
             if (unsent > 0) {
-                if (!confirm(`${unsent} Werkzeuge wurden noch nicht gesendet. Trotzdem beenden?`)) {
+                if (!confirm(`${unsent} outils n'ont pas encore été envoyés. Terminer quand même ?`)) {
                     return;
                 }
             }
             
-            alert(`Session beendet!\n\n${scannedTools.length} Werkzeuge verarbeitet.`);
+            alert(`Session terminée !\n\n${scannedTools.length} outils traités.`);
             resetForm();
         });
 
-        // Zurücksetzen
+        // Recommencer
         document.getElementById('resetButton').addEventListener('click', () => {
             if (scannedTools.length > 0) {
-                if (!confirm('Alle gescannten Werkzeuge gehen verloren. Wirklich neu starten?')) {
+                if (!confirm('Tous les outils scannés seront perdus. Vraiment recommencer ?')) {
                     return;
                 }
             }
             resetForm();
         });
 
-        // Hilfsfunktionen
+        // Fonctions utilitaires
         function isValidEmployeeOrStorageTag(tag) {
             const upperTag = tag.toUpperCase();
             return PREFIXES.employee.some(prefix => upperTag.startsWith(prefix)) ||
@@ -521,13 +536,13 @@
 
         async function sendToolToSheets(toolData) {
             const data = {
-                werkzeugId: toolData.id,
-                werkzeugName: toolData.name,
-                status: toolData.status,
-                mitarbeiterId: employeeData.id,
-                mitarbeiterName: employeeData.name,
-                aktion: currentAction,
-                zeitstempel: toolData.timestamp
+                outilId: toolData.id,
+                outilNom: toolData.name,
+                statut: toolData.status,
+                employeId: employeeData.id,
+                employeNom: employeeData.name,
+                action: currentAction,
+                horodatage: toolData.timestamp
             };
 
             try {
@@ -540,18 +555,18 @@
                     body: formData
                 });
 
-                // Markiere als gesendet
+                // Marquer comme envoyé
                 const toolIndex = scannedTools.findIndex(tool => tool.id === toolData.id);
                 if (toolIndex !== -1) {
                     scannedTools[toolIndex].sent = true;
                     updateToolList();
                 }
                 
-                console.log('Werkzeug gesendet:', data);
+                console.log('Outil envoyé :', data);
                 
             } catch (error) {
-                console.error('Fehler beim Senden:', error);
-                showStatus('toolStatus', '❌ Fehler beim Senden an Google Sheets', 'error');
+                console.error('Erreur lors de l\'envoi :', error);
+                showStatus('toolStatus', '❌ Erreur lors de l\'envoi à Google Sheets', 'error');
             }
         }
 
@@ -566,14 +581,14 @@
                 item.innerHTML = `
                     <span class="tool-name">${tool.name}</span>
                     <span class="tool-status ${tool.sent ? 'sent' : ''}">
-                        ${tool.sent ? '✓ Gesendet' : '⏳ Warte...'}
+                        ${tool.sent ? '✓ Envoyé' : '⏳ En attente...'}
                     </span>
                 `;
                 list.appendChild(item);
             });
             
             counter.style.display = 'block';
-            counter.textContent = `${scannedTools.length} Werkzeug${scannedTools.length !== 1 ? 'e' : ''} gescannt`;
+            counter.textContent = `${scannedTools.length} outil${scannedTools.length !== 1 ? 's' : ''} scanné${scannedTools.length !== 1 ? 's' : ''}`;
             updateDataDisplay();
         }
 
@@ -587,6 +602,11 @@
                 currentAbortController = null;
             }
             
+            if (scanTimeout) {
+                clearTimeout(scanTimeout);
+                scanTimeout = null;
+            }
+            
             document.querySelectorAll('.scan-section').forEach(section => {
                 section.classList.remove('completed', 'active');
             });
@@ -595,7 +615,7 @@
             document.getElementById('scanEmployee').disabled = false;
             document.getElementById('scanTool').disabled = true;
             document.getElementById('finishButton').disabled = true;
-            document.getElementById('scanTool').innerHTML = '<span class="icon">🔨</span> Werkzeug hinzufügen';
+            document.getElementById('scanTool').innerHTML = '<span class="icon">🔨</span> Ajouter un outil';
             
             document.querySelectorAll('.status').forEach(status => {
                 status.style.display = 'none';
@@ -604,6 +624,7 @@
             document.getElementById('dataDisplay').style.display = 'none';
             document.getElementById('toolList').innerHTML = '';
             document.getElementById('toolCounter').style.display = 'none';
+            isScanning = false;
         }
 
         function showStatus(elementId, message, type) {
@@ -617,8 +638,8 @@
             if (employeeData) {
                 document.getElementById('dataDisplay').style.display = 'block';
                 
-                if (employeeData.name.toUpperCase().startsWith('LGR-')) {
-                    document.getElementById('employeeData').textContent = 'Rückgabe ans Lager';
+                if (employeeData.name.toUpperCase().startsWith('DEP-')) {
+                    document.getElementById('employeeData').textContent = 'Retour au dépôt';
                 } else {
                     document.getElementById('employeeData').textContent = employeeData.name;
                 }
