@@ -281,7 +281,8 @@
             <strong>📌 Mode d'emploi :</strong>
             • <strong>Emprunter :</strong> ISO-Employé → Scanner plusieurs outils<br>
             • <strong>Retourner :</strong> DEP-Dépôt → Scanner plusieurs outils<br>
-            • <strong>Catégories :</strong> ARR- (Arrosage), BAT- (Batteries), MACH- (Machines), DIV- (Divers)
+            • <strong>Catégories :</strong> ARR- (Arrosage), BAT- (Batteries), MACH- (Machines), DIV- (Divers), CONS- (Consommables)*<br>
+            • <small>*Les consommables peuvent être scannés plusieurs fois</small>
         </div>
 
         <!-- Scanner personne/dépôt -->
@@ -340,7 +341,8 @@
         const PREFIXES = {
             employee: ['ISO-'],
             storage: ['DEP-'],
-            tools: ['ARR-', 'BAT-', 'MACH-', 'DIV-']
+            tools: ['ARR-', 'BAT-', 'MACH-', 'DIV-', 'CONS-'],
+            consumables: ['CONS-'] // Verbrauchsgegenstände - mehrfach scanbar
         };
 
         // Vérifier la disponibilité NFC
@@ -437,7 +439,7 @@
 
             const button = document.getElementById('scanTool');
             button.innerHTML = '<span class="loader"></span> En attente d\'outil...';
-            showStatus('toolStatus', 'Veuillez scanner un tag outil (ARR-, BAT-, MACH-, DIV-)...', 'info');
+            showStatus('toolStatus', 'Veuillez scanner un tag outil/consommable (ARR-, BAT-, MACH-, DIV-, CONS-)...', 'info');
 
             try {
                 const ndef = new NDEFReader();
@@ -461,8 +463,9 @@
                         timestamp: new Date().toLocaleString('fr-FR')
                     };
                     
-                    // Vérifier si l'outil a déjà été scanné
-                    if (scannedTools.some(tool => tool.id === toolData.id)) {
+                    // Vérifier si l'outil a déjà été scanné (sauf pour consommables)
+                    const isConsumable = tagData.toUpperCase().startsWith('CONS-');
+                    if (!isConsumable && scannedTools.some(tool => tool.id === toolData.id)) {
                         showStatus('toolStatus', '⚠️ Outil déjà scanné !', 'error');
                         return;
                     }
@@ -471,7 +474,13 @@
                     scannedTools.push({...toolData, sent: false});
                     updateToolList();
                     
-                    showStatus('toolStatus', `✓ ${toolData.name} ajouté`, 'success');
+                    // Message adapté pour consommables
+                    if (isConsumable) {
+                        const count = scannedTools.filter(t => t.name === toolData.name).length;
+                        showStatus('toolStatus', `✓ ${toolData.name} ajouté (${count}x au total)`, 'success');
+                    } else {
+                        showStatus('toolStatus', `✓ ${toolData.name} ajouté`, 'success');
+                    }
                     
                     // Envoyer à Google Sheets
                     await sendToolToSheets(toolData);
@@ -575,11 +584,28 @@
             const counter = document.getElementById('toolCounter');
             
             list.innerHTML = '';
+            
+            // Gruppiere Verbrauchsgegenstände
+            const toolGroups = {};
             scannedTools.forEach(tool => {
+                const key = tool.name;
+                if (!toolGroups[key]) {
+                    toolGroups[key] = {
+                        ...tool,
+                        count: 1
+                    };
+                } else {
+                    toolGroups[key].count++;
+                }
+            });
+            
+            // Zeige gruppierte Liste
+            Object.values(toolGroups).forEach(tool => {
                 const item = document.createElement('div');
                 item.className = 'tool-item';
+                const countDisplay = tool.count > 1 ? ` (${tool.count}x)` : '';
                 item.innerHTML = `
-                    <span class="tool-name">${tool.name}</span>
+                    <span class="tool-name">${tool.name}${countDisplay}</span>
                     <span class="tool-status ${tool.sent ? 'sent' : ''}">
                         ${tool.sent ? '✓ Envoyé' : '⏳ En attente...'}
                     </span>
@@ -588,7 +614,7 @@
             });
             
             counter.style.display = 'block';
-            counter.textContent = `${scannedTools.length} outil${scannedTools.length !== 1 ? 's' : ''} scanné${scannedTools.length !== 1 ? 's' : ''}`;
+            counter.textContent = `${scannedTools.length} article${scannedTools.length !== 1 ? 's' : ''} scanné${scannedTools.length !== 1 ? 's' : ''}`;
             updateDataDisplay();
         }
 
